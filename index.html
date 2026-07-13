@@ -349,7 +349,6 @@
       <aside class="summary">
         <div class="summary-label">Estimativa mensal</div>
         <div class="summary-total" id="totalDisplay">R$ 0,00<small>/mês</small></div>
-        <div class="summary-perclient" id="perClient"></div>
 
         <div class="propbar" id="propbar">
           <span style="width:20%; background:var(--green);"></span>
@@ -381,21 +380,12 @@
             </div>
           </div>
 
-          <div class="row-grid">
-            <div class="field">
-              <div class="field-row">
-                <label for="clientes">Clientes / mês</label>
-                <input type="number" class="value-input" id="clientesVal" value="500" min="100" max="10000" step="10">
-              </div>
-              <input type="range" id="clientes" min="10" max="10000" step="10" value="500">
+          <div class="field">
+            <div class="field-row">
+              <label for="atendimento">Mensagens de atendimento / mês <span class="rate-pill">total, não por cliente</span></label>
+              <input type="text" inputmode="numeric" class="value-input" id="atendimentoVal" value="5.000" data-min="0" data-max="300000">
             </div>
-            <div class="field">
-              <div class="field-row">
-                <label for="msgs">Mensagens / cliente</label>
-                <input type="number" class="value-input" id="msgsVal" value="10" min="1" max="100" step="1">
-              </div>
-              <input type="range" id="msgs" min="1" max="100" step="1" value="10">
-            </div>
+            <input type="range" id="atendimento" min="0" max="300000" step="100" value="5000">
           </div>
 
           <div class="toggle-row">
@@ -419,7 +409,7 @@
           <div class="field">
             <div class="field-row">
               <label for="mkt">Marketing <span class="rate-pill">R$ 0,3217</span></label>
-              <input type="number" class="value-input" id="mktVal" value="0" min="0" max="50000" step="10">
+              <input type="text" inputmode="numeric" class="value-input" id="mktVal" value="0" data-min="0" data-max="50000">
             </div>
             <input type="range" id="mkt" min="0" max="50000" step="100" value="0">
           </div>
@@ -427,7 +417,7 @@
           <div class="field">
             <div class="field-row">
               <label for="util">Utilidade <span class="rate-pill">R$ 0,0350</span></label>
-              <input type="number" class="value-input" id="utilVal" value="0" min="0" max="50000" step="10">
+              <input type="text" inputmode="numeric" class="value-input" id="utilVal" value="0" data-min="0" data-max="50000">
             </div>
             <input type="range" id="util" min="0" max="50000" step="100" value="0">
           </div>
@@ -435,7 +425,7 @@
           <div class="field">
             <div class="field-row">
               <label for="auth">Autenticação <span class="rate-pill">R$ 0,0350</span></label>
-              <input type="number" class="value-input" id="authVal" value="0" min="0" max="50000" step="10">
+              <input type="text" inputmode="numeric" class="value-input" id="authVal" value="0" data-min="0" data-max="50000">
             </div>
             <input type="range" id="auth" min="0" max="50000" step="100" value="0">
           </div>
@@ -458,23 +448,34 @@
   const fmt = (n) => n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
   const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 
+  // Aceita números colados direto do relatório da Meta, que usa "." como separador
+  // de milhar (ex: "7.653", "169.452"). Removemos tudo que não for dígito e lemos
+  // como inteiro — essas contagens de mensagens nunca têm casas decimais.
+  function parseCount(str){
+    const digitsOnly = String(str).replace(/[^\d]/g, '');
+    if (digitsOnly === '') return NaN;
+    return parseInt(digitsOnly, 10);
+  }
+  // Reformata para exibição no padrão pt-BR (ex: 7653 -> "7.653"), pra ficar
+  // igual ao que a pessoa colou/vê no relatório da Meta.
+  function formatCount(n){
+    return n.toLocaleString('pt-BR');
+  }
+
   const els = {
-    clientes: document.getElementById('clientes'),
-    msgs: document.getElementById('msgs'),
+    atendimento: document.getElementById('atendimento'),
     mkt: document.getElementById('mkt'),
     util: document.getElementById('util'),
     auth: document.getElementById('auth'),
     iaToggle: document.getElementById('iaToggle'),
     total: document.getElementById('totalDisplay'),
-    perClient: document.getElementById('perClient'),
     bInbound: document.getElementById('bInbound'),
     bMkt: document.getElementById('bMkt'),
     bUtil: document.getElementById('bUtil'),
     bAuth: document.getElementById('bAuth'),
     bIA: document.getElementById('bIA'),
     iaRow: document.getElementById('iaRow'),
-    clientesVal: document.getElementById('clientesVal'),
-    msgsVal: document.getElementById('msgsVal'),
+    atendimentoVal: document.getElementById('atendimentoVal'),
     mktVal: document.getElementById('mktVal'),
     utilVal: document.getElementById('utilVal'),
     authVal: document.getElementById('authVal'),
@@ -483,49 +484,54 @@
 
   let iaOn = false;
 
-  // Liga um slider ao seu campo numérico: pode digitar OU arrastar.
-  // Digitar aceita valores acima do máximo do slider (o slider só clampa a posição visual).
+  // Liga um slider ao seu campo numérico: pode digitar/colar OU arrastar.
+  // Digitar/colar aceita valores acima do máximo do slider (o slider só clampa a posição visual).
   function bindPair(rangeEl, numberEl){
     rangeEl.addEventListener('input', () => {
       numberEl.value = rangeEl.value;
       recalc();
     });
     numberEl.addEventListener('input', () => {
-      const raw = parseFloat(numberEl.value);
+      const raw = parseCount(numberEl.value);
       if (!isNaN(raw)) {
         rangeEl.value = clamp(raw, parseFloat(rangeEl.min), parseFloat(rangeEl.max));
       }
       recalc();
     });
+    // Só reseta para 0 se o campo REALMENTE ficar vazio/inválido ao perder o foco.
+    // Se tiver um valor válido, reformata com separador de milhar (7653 -> "7.653").
     numberEl.addEventListener('blur', () => {
-      if (numberEl.value === '' || isNaN(parseFloat(numberEl.value))) numberEl.value = 0;
+      const raw = parseCount(numberEl.value);
+      if (isNaN(raw)) {
+        numberEl.value = 0;
+      } else {
+        numberEl.value = formatCount(raw);
+      }
+      recalc();
     });
   }
 
-  bindPair(els.clientes, els.clientesVal);
-  bindPair(els.msgs, els.msgsVal);
+  bindPair(els.atendimento, els.atendimentoVal);
   bindPair(els.mkt, els.mktVal);
   bindPair(els.util, els.utilVal);
   bindPair(els.auth, els.authVal);
 
   function recalc(){
-    const clientes = Math.max(0, parseFloat(els.clientesVal.value) || 0);
-    const msgs = Math.max(0, parseFloat(els.msgsVal.value) || 0);
-    const mkt = Math.max(0, parseFloat(els.mktVal.value) || 0);
-    const util = Math.max(0, parseFloat(els.utilVal.value) || 0);
-    const auth = Math.max(0, parseFloat(els.authVal.value) || 0);
+    const atendimento = Math.max(0, parseCount(els.atendimentoVal.value) || 0);
+    const mkt = Math.max(0, parseCount(els.mktVal.value) || 0);
+    const util = Math.max(0, parseCount(els.utilVal.value) || 0);
+    const auth = Math.max(0, parseCount(els.authVal.value) || 0);
 
     // A Meta cobra OU Atendimento Humano OU Meta Business Agent — nunca os dois.
-    const inboundTotal = iaOn ? 0 : (clientes * msgs * RATES.inbound);
+    const inboundTotal = iaOn ? 0 : (atendimento * RATES.inbound);
     const mktTotal = mkt * RATES.marketing;
     const utilTotal = util * RATES.utilidade;
     const authTotal = auth * RATES.autenticacao;
-    const iaTotal = iaOn ? (clientes * msgs * RATES.ia) : 0;
+    const iaTotal = iaOn ? (atendimento * RATES.ia) : 0;
 
     const total = inboundTotal + mktTotal + utilTotal + authTotal + iaTotal;
 
     els.total.innerHTML = fmt(total) + '<small>/mês</small>';
-    els.perClient.textContent = clientes > 0 ? `${fmt(total / clientes)} por cliente/mês` : '';
     els.bInbound.textContent = fmt(inboundTotal);
     els.bMkt.textContent = fmt(mktTotal);
     els.bUtil.textContent = fmt(utilTotal);
