@@ -287,41 +287,6 @@
     outline: 2px solid var(--green-soft); outline-offset: 2px;
   }
 
-  .toggle-row{
-    display:flex; justify-content:space-between; align-items:center;
-    gap: 16px;
-    padding-top: 16px;
-    margin-top: 4px;
-    border-top: 1px solid var(--line);
-  }
-  .toggle-label{ font-size: 13px; font-weight:600; }
-  .toggle-hint{ font-size: 12px; color: var(--muted); margin-top:3px; max-width: 40ch; line-height:1.5; }
-  .switch{
-    position: relative;
-    width: 42px; height: 24px;
-    background: var(--navy-chip);
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    cursor:pointer;
-    flex-shrink:0;
-    transition: background 0.2s;
-  }
-  .switch::after{
-    content:"";
-    position:absolute; top:2px; left:2px;
-    width:18px; height:18px; border-radius:5px;
-    background: var(--muted);
-    transition: transform 0.2s, background 0.2s;
-  }
-  .switch.on{ background: var(--green-dim); border-color: rgba(0,209,94,0.4); }
-  .switch.on::after{ transform: translateX(18px); background: var(--green); }
-
-  .ia-token-fields{
-    padding-top: 16px;
-    margin-top: 4px;
-    border-top: 1px solid var(--line);
-  }
-
   footer{
     text-align:center;
     color: var(--muted);
@@ -334,7 +299,7 @@
 </head>
 <body>
   <div class="shell">
-    <header>
+       <header>
       <div>
         <h1>Custo mensal na <span>API Oficial</span> do WhatsApp</h1>
         <p>Simule o valor cobrado diretamente pela Meta, por categoria de mensagem.</p>
@@ -349,11 +314,10 @@
         <div class="summary-total" id="totalDisplay">R$ 0,00<small>/mês</small></div>
 
         <div class="propbar" id="propbar">
-          <span style="width:20%; background:var(--green);"></span>
-          <span style="width:20%; background:#1fb877;"></span>
-          <span style="width:20%; background:#1a8f6a;"></span>
-          <span style="width:20%; background:#146b57;"></span>
-          <span style="width:20%; background:#ffb020;"></span>
+          <span style="width:25%; background:var(--green);"></span>
+          <span style="width:25%; background:#1fb877;"></span>
+          <span style="width:25%; background:#1a8f6a;"></span>
+          <span style="width:25%; background:#146b57;"></span>
         </div>
 
         <div class="legend">
@@ -361,7 +325,6 @@
           <div class="legend-row"><span class="swatch" style="background:#1fb877;"></span><span class="lbl">Marketing</span><span class="amt" id="bMkt">R$ 0,00</span></div>
           <div class="legend-row"><span class="swatch" style="background:#1a8f6a;"></span><span class="lbl">Utilidade</span><span class="amt" id="bUtil">R$ 0,00</span></div>
           <div class="legend-row"><span class="swatch" style="background:#146b57;"></span><span class="lbl">Autenticação</span><span class="amt" id="bAuth">R$ 0,00</span></div>
-          <div class="legend-row" id="iaRow" style="display:none;"><span class="swatch" style="background:#ffb020;"></span><span class="lbl">Meta Business Agent (IA)</span><span class="amt" id="bIA">R$ 0,00</span></div>
         </div>
 
         <div class="summary-note">Valores calculados com as tarifas oficiais por mensagem da Meta. Não inclui impostos ou taxas de gateway.</div>
@@ -374,7 +337,7 @@
             <span class="card-num">1</span>
             <div>
               <h2>Atendimento inbound</h2>
-              <p>Respostas da sua equipe dentro da janela de 24h de atendimento — R$ 0,0353/msg (ou R$ 0,234/resposta se usar o Meta Business Agent).</p>
+              <p>Respostas da sua equipe dentro da janela de 24h de atendimento — R$ 0,0353/msg.</p>
             </div>
           </div>
 
@@ -384,14 +347,6 @@
               <input type="text" inputmode="numeric" class="value-input" id="atendimentoVal" value="5.000" data-min="0" data-max="300000">
             </div>
             <input type="range" id="atendimento" min="0" max="300000" step="100" value="5000">
-          </div>
-
-          <div class="toggle-row">
-            <div>
-              <div class="toggle-label">Usa Meta Business Agent (IA)?</div>
-              <div class="toggle-hint">Substitui o custo de atendimento humano — a Meta cobra R$ 0,234 por resposta do Business Agent (nunca as duas tarifas juntas).</div>
-            </div>
-            <button class="switch" id="iaToggle" aria-pressed="false"></button>
           </div>
         </div>
 
@@ -431,13 +386,12 @@
       </div>
     </div>
 
-    <footer>Tarifas baseadas na precificação por mensagem da API Oficial do WhatsApp (Meta).</footer>
+    <footer>Tarifas baseadas na precificação por mensagem da API Oficial do WhatsApp (Meta), replicando a fórmula do site original. Ajuste os valores em <code>RATES</code> no código caso a Meta atualize os preços.</footer>
   </div>
 
 <script>
   const RATES = {
     inbound: 0.0353,
-    ia: 0.234,
     marketing: 0.3217,
     utilidade: 0.0350,
     autenticacao: 0.0350
@@ -465,22 +419,17 @@
     mkt: document.getElementById('mkt'),
     util: document.getElementById('util'),
     auth: document.getElementById('auth'),
-    iaToggle: document.getElementById('iaToggle'),
     total: document.getElementById('totalDisplay'),
     bInbound: document.getElementById('bInbound'),
     bMkt: document.getElementById('bMkt'),
     bUtil: document.getElementById('bUtil'),
     bAuth: document.getElementById('bAuth'),
-    bIA: document.getElementById('bIA'),
-    iaRow: document.getElementById('iaRow'),
     atendimentoVal: document.getElementById('atendimentoVal'),
     mktVal: document.getElementById('mktVal'),
     utilVal: document.getElementById('utilVal'),
     authVal: document.getElementById('authVal'),
     propbar: document.getElementById('propbar'),
   };
-
-  let iaOn = false;
 
   // Liga um slider ao seu campo numérico: pode digitar/colar OU arrastar.
   // Digitar/colar aceita valores acima do máximo do slider (o slider só clampa a posição visual).
@@ -520,39 +469,28 @@
     const util = Math.max(0, parseCount(els.utilVal.value) || 0);
     const auth = Math.max(0, parseCount(els.authVal.value) || 0);
 
-    // A Meta cobra OU Atendimento Humano OU Meta Business Agent — nunca os dois.
-    const inboundTotal = iaOn ? 0 : (atendimento * RATES.inbound);
+    const inboundTotal = atendimento * RATES.inbound;
     const mktTotal = mkt * RATES.marketing;
     const utilTotal = util * RATES.utilidade;
     const authTotal = auth * RATES.autenticacao;
-    const iaTotal = iaOn ? (atendimento * RATES.ia) : 0;
 
-    const total = inboundTotal + mktTotal + utilTotal + authTotal + iaTotal;
+    const total = inboundTotal + mktTotal + utilTotal + authTotal;
 
     els.total.innerHTML = fmt(total) + '<small>/mês</small>';
     els.bInbound.textContent = fmt(inboundTotal);
     els.bMkt.textContent = fmt(mktTotal);
     els.bUtil.textContent = fmt(utilTotal);
     els.bAuth.textContent = fmt(authTotal);
-    els.bIA.textContent = fmt(iaTotal);
 
     // Cada linha só aparece quando tem valor (mesma lógica do site original).
     document.getElementById('rowInbound').style.display = inboundTotal > 0 ? 'flex' : 'none';
-    els.iaRow.style.display = iaTotal > 0 ? 'flex' : 'none';
 
     // update proportion bar
-    const parts = [inboundTotal, mktTotal, utilTotal, authTotal, iaTotal];
+    const parts = [inboundTotal, mktTotal, utilTotal, authTotal];
     const sum = parts.reduce((a,b) => a+b, 0) || 1;
     const bars = els.propbar.querySelectorAll('span');
     parts.forEach((p, i) => { bars[i].style.width = (p / sum * 100) + '%'; });
   }
-
-  els.iaToggle.addEventListener('click', () => {
-    iaOn = !iaOn;
-    els.iaToggle.classList.toggle('on', iaOn);
-    els.iaToggle.setAttribute('aria-pressed', String(iaOn));
-    recalc();
-  });
 
   recalc();
 </script>
